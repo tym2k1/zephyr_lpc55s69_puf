@@ -6,3 +6,8 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(hello_world)
 
 target_sources(app PRIVATE src/main.c)
+
+# Include the fsl_puf driver in HAL_NXP
+set(PUF_path $ENV{ZEPHYR_BASE}/../modules/hal/nxp/mcux/mcux-sdk/drivers/puf)
+zephyr_sources(${PUF_path}/fsl_puf.c)
+zephyr_include_directories(${PUF_path})
