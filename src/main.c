@@ -1,14 +1,20 @@
-/*
- * Copyright (c) 2012-2014 Wind River Systems, Inc.
- *
- * SPDX-License-Identifier: Apache-2.0
- */
-
 #include <stdio.h>
+#include "fsl_puf.h"
 
 int main(void)
 {
-	printf("Hello World! %s\n", CONFIG_BOARD_TARGET);
+	status_t status;
+	__attribute__((aligned(16))) uint8_t activation_code[PUF_ACTIVATION_CODE_SIZE];
+
+	puf_config_t pufConfig;
+	PUF_GetDefaultConfig(&pufConfig);
+
+	status = PUF_Init(PUF, &pufConfig);
+	if (status != kStatus_Success) {
+		printf("Error: PUF initialization failed!\r\n");
+		return -1;
+	}
+	printf("PUF Initialized Successfully.\r\n");
 
 	return 0;
 }
