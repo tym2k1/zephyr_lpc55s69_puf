@@ -1,19 +1,20 @@
 #include <zephyr/drivers/flash.h>
 #include <zephyr/storage/flash_map.h>
+#include <zephyr/fs/nvs.h>
 
 /* Flash configuration macros, specific to
  * platform/use-case. These were based
  * on the LPC55S69 board */
 
-#ifndef FLASH_WRITE_SIZE
-#define FLASH_WRITE_SIZE  0x200 /* 512 bytes as per DTS */
-#endif
-#ifndef PARTITION_OFFSET
+// #ifndef FLASH_WRITE_SIZE
+// #define FLASH_WRITE_SIZE  0x200 /* 512 bytes as per DTS */
+// #endif
+// #ifndef PARTITION_OFFSET
 #define PARTITION_OFFSET  0     /* Offset within the partition */
-#endif
-#ifndef STORAGE_PARTITION
+// #endif
+// #ifndef STORAGE_PARTITION
 #define STORAGE_PARTITION storage_partition
-#endif
+// #endif
 
 /* Define flash layout offsets within the partition */
 #define FLASH_OFFSET_ACTIVATION_CODE (PARTITION_OFFSET + 0)
@@ -26,3 +27,6 @@
 
 /* Macro to align size up to the next multiple of 'align' */
 #define ALIGN_UP(x, align) (((x) + (align) - 1) & ~((align) - 1))
+
+/* A static NVS file system instance to be used by the flash handler. */
+static struct nvs_fs fs;

@@ -21,6 +21,9 @@ int PUF_Prover_Initialize(PUF_Type *puf,
     }
     printf("PUF Initialized Successfully.\r\n");
 
+    struct flash_pages_info info;
+    int rc = 0, cnt = 0, cnt_his = 0;
+
     /* Open the storage partition flash area from DTS */
     const struct flash_area *flash_area;
     err = flash_area_open(FIXED_PARTITION_ID(STORAGE_PARTITION), &flash_area);
@@ -44,79 +47,26 @@ int PUF_Prover_Initialize(PUF_Type *puf,
         return -1;
     }
 
-    /* Calculate the absolute offset for the activation code */
-    off_t absolute_offset = flash_area->fa_off + FLASH_OFFSET_ACTIVATION_CODE;
-    size_t aligned_size = ALIGN_UP(activation_code_size, FLASH_WRITE_SIZE);
-
-    padded_buf = malloc(aligned_size);
-    if (!padded_buf) {
-        printf("Error: Unable to allocate memory for padded buffer.\r\n");
-        flash_area_close(flash_area);
-        return -1;
+    fs.flash_device = flash_dev;
+    if (!device_is_ready(fs.flash_device)) {
+            printk("Flash device %s is not ready\n", fs.flash_device->name);
+            return 0;
     }
-    memset(padded_buf, 0xFF, aligned_size);
-
-    if (writeToFlash) {
-        /* Enroll and generate the activation code */
-        memset(activation_code, 0, activation_code_size);
-        status = PUF_Enroll(puf, activation_code, activation_code_size);
-        if (status != kStatus_Success) {
-            printf("Error: PUF enrollment failed!\r\n");
-            free(padded_buf);
-            flash_area_close(flash_area);
-            return -1;
-        }
-        printf("PUF Enroll successful. Activation Code created.\r\n");
-
-        /* Copy activation code into padded buffer */
-        memcpy(padded_buf, activation_code, activation_code_size);
-
-        /* Erase the flash region dedicated to the activation code */
-        err = flash_erase(flash_dev, absolute_offset, aligned_size);
-        if (err != 0) {
-            printf("Error: Flash erase failed! (rc %d)\r\n", err);
-            free(padded_buf);
-            flash_area_close(flash_area);
-            return -1;
-        }
-
-        /* Write the padded activation code to flash */
-        err = flash_write(flash_dev, absolute_offset, padded_buf, aligned_size);
-        if (err != 0) {
-            printf("Error: Flash write failed! (rc %d)\r\n", err);
-            free(padded_buf);
-            flash_area_close(flash_area);
-            return -1;
-        }
-        printf("Activation code saved in flash.\r\n");
-
-        /* Reinitialize PUF after enrollment */
-        PUF_Deinit(puf, &pufConfig);
-        PUF_Init(puf, &pufConfig);
-        printf("PUF Reinitialized after enrollment.\r\n");
-    } else {
-        /* Read the activation code from flash */
-        err = flash_read(flash_dev, absolute_offset, padded_buf, aligned_size);
-        if (err != 0) {
-            printf("Error: Flash read failed! (rc %d)\r\n", err);
-            free(padded_buf);
-            flash_area_close(flash_area);
-            return -1;
-        }
-        memcpy(activation_code, padded_buf, activation_code_size);
-        printf("Activation code read from flash.\r\n");
+    fs.offset = PARTITION_OFFSET;
+    err = flash_get_page_info_by_offs(fs.flash_device, fs.offset, &info);
+    if (err != 0) {
+            printk("Unable to get page info, rc=%d\n", rc);
+            return 0;
     }
+    fs.sector_size = info.size;
+    fs.sector_count = 3U;
 
-    free(padded_buf);
-    flash_area_close(flash_area);
-
-    /* Start the PUF with the activation code */
-    status = PUF_Start(puf, activation_code, activation_code_size);
-    if (status != kStatus_Success) {
-        printf("Error: PUF start failed!\r\n");
-        return -1;
+    /* Mount the NVS file system */
+    err = nvs_mount(&fs);
+    if (err != 0) {
+	printk("Flash Init failed, rc=%d\n", rc);
+	return 0;
     }
-    printf("PUF Started successfully.\r\n");
 
     return 0;
 }
