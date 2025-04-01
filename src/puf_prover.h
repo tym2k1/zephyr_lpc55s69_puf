@@ -14,6 +14,8 @@
  * @param puf                  Pointer to the PUF instance.
  * @param activation_code      Buffer where the activation code will be stored.
  * @param activation_code_size Size of the activation code in bytes.
+ * @param flash_dev            Pointer to the flash device to be used.
+ * @param flash_area           Pointer to the flash area structure to be used.
  * @param writeToFlash         True to enroll and write the activation code,
  *                             false to read it from flash.
  *
@@ -22,6 +24,8 @@
 int PUF_Prover_Initialize(PUF_Type *puf,
                           uint8_t *activation_code,
                           size_t activation_code_size,
+                          const struct flash_area *flash_area,
+                          const struct device *flash_dev,
                           bool writeToFlash);
 
 #endif /* PUF_PROVER_H */
