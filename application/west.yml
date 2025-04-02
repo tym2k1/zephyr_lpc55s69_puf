@@ -1,0 +1,11 @@
+manifest:
+  remotes:
+    - name: zephyrproject-rtos-fork
+      url-base: https://github.com/tym2k1
+  projects:
+    - name: zephyr
+      remote: zephyrproject-rtos-fork
+      revision: v4.1.0
+      import: true
+  self:
+    path: application
