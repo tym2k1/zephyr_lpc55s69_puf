@@ -9,7 +9,7 @@ int main(void)
 {
     printf(VM": PUF TA Initialized\r\n");
 
-    IRQ_CONNECT(IPC_IRQ_ID_0, 0, ipc_irq_0_handler, NULL, 0);
-    irq_enable(IPC_IRQ_ID_0);
+    IRQ_CONNECT(IPC_IRQ_ID, 0, ipc_irq_handler, NULL, 0);
+    irq_enable(IPC_IRQ_ID);
     while(1);
 }

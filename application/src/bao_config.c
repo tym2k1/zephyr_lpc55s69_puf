@@ -9,15 +9,11 @@ void ipc_notify(int ipc_id, int event_id)
     bao_hypercall(BAO_HC_IPC_ID, ipc_id, event_id);
 }
 
-void ipc_irq_0_handler(void)
+void ipc_irq_handler(void)
 {
-    printf("Function 0 called...\n");
-    ipc_notify(0, 0);
-}
+    printf("MemReg0: %.*s \r\n", (int)MESSAGE0_SIZE, message[0]);
+    printf("MemReg1: %.*s \r\n", (int)MESSAGE1_SIZE, message[1]);
 
-
-void ipc_irq_1_handler(void)
-{
-    printf("Function 1 called...\n");
+    // Inform that interrupt got handled
     ipc_notify(0, 0);
 }
