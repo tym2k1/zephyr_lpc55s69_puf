@@ -11,3 +11,5 @@ target_sources(app PRIVATE src/main.c src/puf_prover.c src/flash_handler.c)
 set(PUF_path $ENV{ZEPHYR_BASE}/../modules/hal/nxp/mcux/mcux-sdk/drivers/puf)
 zephyr_sources(${PUF_path}/fsl_puf.c)
 zephyr_include_directories(${PUF_path})
+
+zephyr_include_directories(${ZEPHYR_BASE}/../modules/crypto/mbedtls/include)
