@@ -2,11 +2,14 @@
 #include "puf_prover.h"
 #include "flash_handler.h"
 #include "mbedtls/bignum.h"
+#include "mbedtls/sha256.h"
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/entropy.h"
 #include "mbedtls/ecp.h"
 #include <stddef.h>
-#include "mbedtls/sha256.h"
+#include "utils.h"
+
+
 
 
 int PUF_Prover_Initialize(PUF_Type *puf,
@@ -197,7 +200,7 @@ int getPufKey(PUF_Type *puf,
                           size_t activation_code_size,
                           const struct flash_area *flash_area,
                           const struct device *flash_dev,
-                          bool writeToFlash,uint8_t pufSlot,
+                          bool writeToFlash,
                           uint8_t *outputBuffer)
 {
     
@@ -213,7 +216,7 @@ int getPufKey(PUF_Type *puf,
             return ret;
         }
 
-        ret = flash_write_padded(flash_dev, flash_area, (pufSlot == 0) ? FLASH_OFFSET_INTRINSIC_KEY_1_KC : FLASH_OFFSET_INTRINSIC_KEY_2_KC,
+        ret = flash_write_padded(flash_dev, flash_area, FLASH_OFFSET_INTRINSIC_KEY_1_KC,
                                  keyCode, PUF_KEY_CODE_SIZE);
         if (ret != 0) {
             printf("PUF Intrinsic key 1 KC saving to flash failed!\r\n");
@@ -221,7 +224,7 @@ int getPufKey(PUF_Type *puf,
 
         }
     } else {
-        ret = flash_read_data(flash_dev, flash_area, (pufSlot == 0) ? FLASH_OFFSET_INTRINSIC_KEY_1_KC : FLASH_OFFSET_INTRINSIC_KEY_2_KC ,
+        ret = flash_read_data(flash_dev, flash_area, FLASH_OFFSET_INTRINSIC_KEY_1_KC ,
                               keyCode, PUF_KEY_CODE_SIZE);
         if (ret != 0) {
             flash_area_close(flash_area);
@@ -250,12 +253,14 @@ void pufDeinit(PUF_Type *puf,puf_config_t pufConfig){
     PUF_Deinit(puf, &pufConfig);
 }
 
+
+
 int getResponseToChallenge(const uint8_t *c, size_t c_size, mbedtls_mpi *r, PUF_Type *puf,
                           uint8_t *activation_code,
                           size_t activation_code_size,
                           const struct flash_area *flash_area,
                           const struct device *flash_dev,
-                          bool writeToFlash,int pufSlot
+                          bool writeToFlash
                           ){
     
     int ret;
@@ -265,7 +270,7 @@ int getResponseToChallenge(const uint8_t *c, size_t c_size, mbedtls_mpi *r, PUF_
 
     ret = getPufKey(puf,activation_code,activation_code_size,
                           flash_area,flash_dev,
-                          writeToFlash,pufSlot,
+                          writeToFlash,
                           key);
 
     if(ret!=0){
@@ -273,30 +278,15 @@ int getResponseToChallenge(const uint8_t *c, size_t c_size, mbedtls_mpi *r, PUF_
         return ret;
     }
 
-    
-
     uint8_t combined[c_size + keysize];
 
     // Combine keyCode and challenge
     memcpy(combined, key, keysize);
     memcpy(combined + keysize, c, c_size);
-
-    printf("Intrinsic key = ");
-    for (int i = 0; i < PUF_KEY_SIZE; i++)
-    {
-        printf("%x ", key[i]);
-    }
-    printf("\r\n");
    
     // Hash the combined data
     mbedtls_sha256(combined, sizeof(combined), hashOutput, 0);
     
-    printf("Hashed Output = ");
-    for (int i = 0; i < PUF_KEY_SIZE; i++)
-    {
-        printf("%x ", hashOutput[i]);
-    }
-    printf("\r\n");
 
     if (mbedtls_mpi_read_binary(r, hashOutput, PUF_KEY_SIZE) != 0) {
         free(hashOutput);
@@ -304,58 +294,25 @@ int getResponseToChallenge(const uint8_t *c, size_t c_size, mbedtls_mpi *r, PUF_
     	return 1;
     }
 
-
-
     free(hashOutput);
     free(key);
 
     return 0;
 }
 
-int randFunction(void *rng_state, unsigned char *output, size_t len) {
-	
-    printf("Heeloo from rand");
-    size_t use_len;
-	int rnd;
-    
-	if (rng_state != NULL)
-		rng_state = NULL;
 
-	while (len > 0) {
-		use_len = len;
-		if (use_len > sizeof(int))
-			use_len = sizeof(int);
-
-		rnd = rand();
-		memcpy(output, &rnd, use_len);
-		output += use_len;
-		len -= use_len;
-	}
-
-    
-	return (0);
-}
-
-int performEnrollment(mbedtls_ecp_group *grp, mbedtls_ecp_point *h, mbedtls_ecp_point *C , const uint8_t *c1, size_t c1_size, const uint8_t *c2, size_t c2_size , 
-                          PUF_Type *puf,
-                          uint8_t *activation_code,
-                          size_t activation_code_size,
-                          const struct flash_area *flash_area,
-                          const struct device *flash_dev,
-                          bool writeToFlash){
-    
-    printf("Enrollement Started\r\n");
+int initECC(mbedtls_ecp_group *grp, mbedtls_ecp_point *h, mbedtls_ecp_point *C ){
     mbedtls_ecp_group_init(grp);
 	mbedtls_ecp_point_init(h);
 	mbedtls_ecp_point_init(C);
 	int res;
 	res = mbedtls_ecp_group_load(grp, MBEDTLS_ECP_DP_SECP256R1);
-	
+
     if (res != 0) {
         printf("Failed to load EC group: -0x%04X\n", -res);
         return 1;
     }
-
+    
     mbedtls_mpi x;
 	mbedtls_mpi_init(&x);
 	res = mbedtls_mpi_lset(&x, CONSTANT_FOR_H_GENERATOR);  
@@ -372,6 +329,21 @@ int performEnrollment(mbedtls_ecp_group *grp, mbedtls_ecp_point *h, mbedtls_ecp_
         return 1;
     }
 
+    return 0;
+}
+
+
+
+int performEnrollment(mbedtls_ecp_group *grp, mbedtls_ecp_point *h, mbedtls_ecp_point *C , const uint8_t *c1, size_t c1_size, const uint8_t *c2, size_t c2_size , 
+                          PUF_Type *puf,
+                          uint8_t *activation_code,
+                          size_t activation_code_size,
+                          const struct flash_area *flash_area,
+                          const struct device *flash_dev,
+                          bool writeToFlash){
+    
+    printf("Enrollement Started\r\n");
+
 	mbedtls_mpi mpiValue_R1, mpiValue_R2;
 	mbedtls_mpi_init(&mpiValue_R1);
 	mbedtls_mpi_init(&mpiValue_R2);
@@ -380,15 +352,15 @@ int performEnrollment(mbedtls_ecp_group *grp, mbedtls_ecp_point *h, mbedtls_ecp_
                           activation_code_size,
                           flash_area,
                           flash_dev,
-                          writeToFlash,PUF_SLOT_0) != 0) {
+                          writeToFlash) != 0) {
 		return 1;
 	}
 
-	if (getResponseToChallenge(c2,c2_size,&mpiValue_R2,puf,activation_code,
+	if (getResponseToChallenge(c2,c2_size,&mpiValue_R2,puf,activation_code,  // Write to FLash always false since it is initialised in first call
                           activation_code_size,
                           flash_area,
                           flash_dev,
-                          writeToFlash,PUF_SLOT_1) != 0) {
+                          false) != 0) {
 		return 1;
 	}
     
@@ -402,5 +374,105 @@ int performEnrollment(mbedtls_ecp_group *grp, mbedtls_ecp_point *h, mbedtls_ecp_
 
 
 
+int add_mul_mod(mbedtls_mpi *mpiValue_1, mbedtls_mpi *mpiValue_2,
+		mbedtls_mpi *mpiValue_R, mbedtls_mpi *mpiValue_p, mbedtls_mpi *result) {
 
+	if (mbedtls_mpi_mul_mpi(result, mpiValue_2, mpiValue_R) != 0) {
+		return 1;
+	}
+	if (mbedtls_mpi_add_mpi(result, result, mpiValue_1) != 0) {
+		return 1;
+	}
+	if (mbedtls_mpi_mod_mpi(result, result, mpiValue_p) != 0) {
+		return 1;
+	}
+	return 0;
+}
+
+
+
+
+
+int performAuthentication(mbedtls_ecp_group *grp, mbedtls_ecp_point *g, mbedtls_ecp_point *h, 
+                        mbedtls_ecp_point *proof, mbedtls_ecp_point *C, mbedtls_mpi *result_v, 
+                        mbedtls_mpi *result_w, mbedtls_mpi *nonce,const uint8_t *c1, size_t c1_size, const uint8_t *c2, size_t c2_size , 
+                          PUF_Type *puf,
+                          uint8_t *activation_code,
+                          size_t activation_code_size,
+                          const struct flash_area *flash_area,
+                          const struct device *flash_dev) {
+
+	unsigned char sha256_result[32];
+	int res = 0;
+	mbedtls_mpi mpiValue_R1, mpiValue_R2, random_r, random_u, result_c;
+
+	mbedtls_mpi_init(&mpiValue_R1);
+	mbedtls_mpi_init(&mpiValue_R2);
+	mbedtls_mpi_init(&random_r);
+	mbedtls_mpi_init(&random_u);
+	mbedtls_mpi_init(&result_c);
+    
+    if (!rng_initialized) {
+        if (init_random_generator() != 0) {
+            printf("Random generator init failed\n");
+            return 1;
+        }
+    }
+
+
+
+	if (generateRandomNumbers(&random_r, &random_u) != 0) {
+		printf("Error in Random Process\n\n");
+		return 1;
+	}
+
+	if (getResponseToChallenge(c1,c1_size,&mpiValue_R1,puf,activation_code,
+                          activation_code_size,
+                          flash_area,
+                          flash_dev,
+                          false) != 0) {
+		return 1;
+	}
+
+	if (getResponseToChallenge(c2,c2_size,&mpiValue_R2,puf,activation_code,  
+                          activation_code_size,
+                          flash_area,
+                          flash_dev,
+                          false) != 0) {
+		return 1;
+	}
+
+	if(mbedtls_ecp_muladd(grp, proof, &random_r, g, &random_u, h) != 0) { //proof
+		return 1;
+	}
+
+    unsigned char nonce_buf[32]; // 256-bit nonce
+    res = mbedtls_ctr_drbg_random(&ctr_drbg, nonce_buf, sizeof(nonce_buf));
+    if (res != 0) {
+        printf("Error generating nonce\n");
+        return 1;
+    }
+
+    res = mbedtls_mpi_read_binary(nonce, nonce_buf, sizeof(nonce_buf));
+    if (res != 0) {
+        printf("Error setting nonce\n");
+        return 1;
+    }
+
+	size_t olen;
+	unsigned char buff[100];
+	mbedtls_ecp_point_write_binary(grp, C, MBEDTLS_ECP_PF_UNCOMPRESSED, &olen, buff, sizeof(buff));
+	unsigned char buff2[olen + mbedtls_mpi_size(nonce)];
+	memcpy(buff2, buff, olen);
+	mbedtls_mpi_write_binary(nonce, buff2 + olen, sizeof(buff2) - olen);
+
+	sha256Hash(buff2, sizeof(buff2), sha256_result);
+    mbedtls_mpi_read_string(&result_c, 16, sha256_result);
+
+	add_mul_mod(&random_r, &result_c, &mpiValue_R1, &grp->P, result_v);
+	add_mul_mod(&random_u, &result_c, &mpiValue_R2, &grp->P, result_w);
+
+	return 0;
+
+}
 
