@@ -11,7 +11,7 @@ static unsigned char memory_buf[MEMORY_BUF_SIZE];
 #define ENROLLMENT_IS_UP 1
 
 #define COMMITMENT_BUFFER_SIZE 65
-const char *input_hex = "04F247AA4777B5368F6BAEFC4ACC10994D0C45EEA9E161A84912A77186560B86B0A420DDD38D68AB61BD968CD287C4CBD7E088C2703919E065B6A19861451D9A05";  // Paste your commitment string here
+const char *commitment_hex = "0485E41D73D71C62636D6D8FCE2349382FB2FBCFD618229431957B551F8F3F84B9EFC43EAF541F981F05AB97820F0DE552E77F5924311A3450F37BD0DC9AD16693";  // Paste your commitment string here
 
 #define CHALLENGE_SIZE 16
 
@@ -42,41 +42,21 @@ int main(void)
     int ret;
     puf_config_t pufConfig;
 
+    mbedtls_ecp_group grp;
+	mbedtls_ecp_point h, C;
 
-    /* Initialize flash area and device */
+    // Initialize flash area and device 
     ret = flash_initialize(FIXED_PARTITION_ID(STORAGE_PARTITION), &flash_area, &flash_dev);
     if (ret != 0) {
         printf("Flash Initialization failed!\r\n");
         return ret;
     }
     
-    // Initialization of PUF
-    ret = initialize_and_start_puf(PUF,pufConfig,
-                                    activation_code,
-                                    PUF_ACTIVATION_CODE_SIZE,
-                                    flash_area,
-                                    flash_dev,
-                                    ENROLLMENT_IS_UP);
     
-    if(ret!=0){
-        printf("PUF Initialisation Failed\r\n");
-        return ret;
-    }
-
-    mbedtls_ecp_group grp;
-	mbedtls_ecp_point h, C;
-	
-    ret = init_ECC(&grp,&h,&C);
-    if(ret!=0)
-    {
-        printf("ECC couldn't be initiliased\r\n");
-        return ret;
-    }
-
     if(ENROLLMENT_IS_UP==1){
 
         ret = perform_enrollment(&grp,&h,&C,c1,CHALLENGE_SIZE, c2, CHALLENGE_SIZE, 
-                            PUF,
+                            PUF,pufConfig,
                             activation_code,
                             PUF_ACTIVATION_CODE_SIZE,
                             flash_area,
@@ -111,28 +91,6 @@ int main(void)
 
     else{
 
-        uint8_t commitment[COMMITMENT_BUFFER_SIZE];
-        
-        // Convert the hex string to binary buffer
-        int ret = hex_string_to_bytes(input_hex, commitment, sizeof(commitment));
-        if (ret != 0) {
-            printf("Invalid hex string or buffer size too small\n");
-            return -1;
-        }
-
-        printf("Commitment received (in hex):\n");
-        for (size_t i = 0; i < sizeof(commitment); i++) {
-            printf("%02x ", commitment[i]);
-        }
-        printf("\n");
-
-        // Deserialize commitment into C
-        ret = import_commitment(&grp,commitment, &C);
-        if (ret != 0) {
-            printf("Failed to import commitment\n");
-            return ret;
-        }
-
         mbedtls_ecp_point proof;
         mbedtls_ecp_point_init(&proof);
         mbedtls_mpi result_v, result_w, nonce;
@@ -141,11 +99,11 @@ int main(void)
         mbedtls_mpi_init(&nonce);
 
         ret = perform_authentication(&grp, &grp.G, &h, &proof, &C, &result_v, &result_w, &nonce , c1, CHALLENGE_SIZE, c2, CHALLENGE_SIZE, 
-                            PUF,
+                            PUF,pufConfig,
                             activation_code,
                             PUF_ACTIVATION_CODE_SIZE,
                             flash_area,
-                            flash_dev);
+                            flash_dev,commitment_hex, COMMITMENT_BUFFER_SIZE);
 
         if(ret!=0){
             printf("Couldn't Authenticate the device\r\n");
@@ -161,8 +119,6 @@ int main(void)
         }
 
     }
-
-    puf_deinit(PUF,pufConfig); // Deinitalization Of Puf
     
     return 0;
 }

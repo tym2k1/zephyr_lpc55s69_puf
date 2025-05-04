@@ -9,6 +9,38 @@
 #include <stddef.h>
 #include "utils.h"
 
+// Helper Function to initialise puf and ECC together
+int initialize_puf_and_ECC(mbedtls_ecp_group *grp, mbedtls_ecp_point *h, mbedtls_ecp_point *C , 
+                            PUF_Type *puf, puf_config_t pufConfig,
+                            uint8_t *activation_code,
+                            size_t activation_code_size,
+                            const struct flash_area *flash_area,
+                            const struct device *flash_dev,
+                            bool writeToFlash){
+    
+    int ret = 0;
+    
+    ret = initialize_and_start_puf(puf,pufConfig,
+        activation_code,
+        activation_code_size,
+        flash_area,
+        flash_dev,
+        writeToFlash);
+
+    if(ret!=0){
+        printf("PUF Initialisation Failed\r\n");
+        return ret;
+    }
+
+    ret = init_ECC(grp,h,C);
+    if(ret!=0)
+    {
+        printf("ECC couldn't be initiliased\r\n");
+        return ret;
+    }
+
+}
+
 
 int initialize_and_start_puf(PUF_Type *puf,puf_config_t pufConfig,
                           uint8_t *activation_code,
@@ -215,12 +247,17 @@ int init_ECC(mbedtls_ecp_group *grp, mbedtls_ecp_point *h, mbedtls_ecp_point *C 
 
 
 int perform_enrollment(mbedtls_ecp_group *grp, mbedtls_ecp_point *h, mbedtls_ecp_point *C , const uint8_t *c1, size_t c1_size, const uint8_t *c2, size_t c2_size , 
-                          PUF_Type *puf,
+                          PUF_Type *puf,puf_config_t pufConfig,
                           uint8_t *activation_code,
                           size_t activation_code_size,
                           const struct flash_area *flash_area,
                           const struct device *flash_dev,
                           bool writeToFlash){
+    
+    
+    if(initialize_puf_and_ECC(grp,h,C, puf, pufConfig, activation_code, activation_code_size, flash_area, flash_dev, writeToFlash) != 0 ){
+        return 1;
+    }
     
     printf("Enrollement Started\r\n");
 
@@ -248,6 +285,8 @@ int perform_enrollment(mbedtls_ecp_group *grp, mbedtls_ecp_point *h, mbedtls_ecp
 		return 1;
 	}
 
+    puf_deinit(puf,pufConfig); // Deinitalization Of Puf
+
 	return 0;
 
 }
@@ -269,6 +308,34 @@ int add_mul_mod(mbedtls_mpi *mpiValue_1, mbedtls_mpi *mpiValue_2,
 	return 0;
 }
 
+// Helper Function To Convert Commitment Hex To ECC Point
+int get_commitment(const char *commitment_hex, size_t commitment_size, mbedtls_ecp_group *grp, mbedtls_ecp_point *C){
+    
+    uint8_t commitment[commitment_size];
+        
+    // Convert the hex string to binary buffer
+    int ret = hex_string_to_bytes(commitment_hex, commitment, sizeof(commitment));
+    if (ret != 0) {
+        printf("Invalid hex string or buffer size too small\n");
+        return -1;
+    }
+
+    printf("Commitment received (in hex):\n");
+    for (size_t i = 0; i < sizeof(commitment); i++) {
+        printf("%02x ", commitment[i]);
+    }
+    printf("\n");
+
+    // Deserialize commitment into C
+    ret = import_commitment(grp,commitment, C);
+    if (ret != 0) {
+        printf("Failed to import commitment\n");
+        return ret;
+    }
+
+    return 0;
+
+}
 
 
 
@@ -276,11 +343,22 @@ int add_mul_mod(mbedtls_mpi *mpiValue_1, mbedtls_mpi *mpiValue_2,
 int perform_authentication(mbedtls_ecp_group *grp, mbedtls_ecp_point *g, mbedtls_ecp_point *h, 
                         mbedtls_ecp_point *proof, mbedtls_ecp_point *C, mbedtls_mpi *result_v, 
                         mbedtls_mpi *result_w, mbedtls_mpi *nonce,const uint8_t *c1, size_t c1_size, const uint8_t *c2, size_t c2_size , 
-                          PUF_Type *puf,
+                          PUF_Type *puf, puf_config_t pufConfig,
                           uint8_t *activation_code,
                           size_t activation_code_size,
                           const struct flash_area *flash_area,
-                          const struct device *flash_dev) {
+                          const struct device *flash_dev, const char *commitment_hex, size_t commitment_size) {
+
+    
+
+    if(initialize_puf_and_ECC(grp,h,C, puf, pufConfig, activation_code, activation_code_size, flash_area, flash_dev, false) != 0 ){
+        return 1;
+    }
+
+
+    if(get_commitment(commitment_hex, commitment_size, grp, C)!=0){
+        return 1; 
+    }
 
 	unsigned char sha256_result[32];
 	int res = 0;
@@ -351,6 +429,8 @@ int perform_authentication(mbedtls_ecp_group *grp, mbedtls_ecp_point *g, mbedtls
 
 	add_mul_mod(&random_r, &result_c, &mpiValue_R1, &grp->P, result_v);
 	add_mul_mod(&random_u, &result_c, &mpiValue_R2, &grp->P, result_w);
+
+    puf_deinit(puf,pufConfig); // Deinitalization Of Puf
 
 	return 0;
 

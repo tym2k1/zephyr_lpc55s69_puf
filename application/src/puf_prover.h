@@ -90,6 +90,7 @@ int init_ECC(mbedtls_ecp_group *grp, mbedtls_ecp_point *h, mbedtls_ecp_point *C)
 * @param c1, c2        Challenge 1 and 2 buffers.
 * @param c1_size, c2_size Size of challenge buffers.
 * @param puf           PUF instance.
+* @param pufConfig     PUF Config instance.
 * @param activation_code Activation code.
 * @param activation_code_size Size of activation code.
 * @param flash_area    Flash area used.
@@ -100,7 +101,7 @@ int init_ECC(mbedtls_ecp_group *grp, mbedtls_ecp_point *h, mbedtls_ecp_point *C)
 int perform_enrollment(mbedtls_ecp_group *grp, mbedtls_ecp_point *h, mbedtls_ecp_point *C,
                       const uint8_t *c1, size_t c1_size,
                       const uint8_t *c2, size_t c2_size,
-                      PUF_Type *puf, uint8_t *activation_code,
+                      PUF_Type *puf, puf_config_t pufConfig, uint8_t *activation_code,
                       size_t activation_code_size,
                       const struct flash_area *flash_area,
                       const struct device *flash_dev, bool writeToFlash);
@@ -135,10 +136,13 @@ int add_mul_mod(mbedtls_mpi *mpiValue_1, mbedtls_mpi *mpiValue_2,
 * @param c1, c2        Challenges used for authentication.
 * @param c1_size, c2_size Sizes of challenges.
 * @param puf           PUF instance.
+* @param pufConfig     PUF Config instance.
 * @param activation_code Activation code buffer.
 * @param activation_code_size Size of activation code.
 * @param flash_area    Flash area used for flash reads.
 * @param flash_dev     Flash device used.
+* @param commitment_hex Pointer of Char to store the Commitment
+* @param commitment_size Size of Commitment
 * @return 0 on success, non zero on failure.
 */
 int perform_authentication(mbedtls_ecp_group *grp, mbedtls_ecp_point *g, mbedtls_ecp_point *h,
@@ -147,10 +151,10 @@ int perform_authentication(mbedtls_ecp_group *grp, mbedtls_ecp_point *g, mbedtls
                           mbedtls_mpi *nonce,
                           const uint8_t *c1, size_t c1_size,
                           const uint8_t *c2, size_t c2_size,
-                          PUF_Type *puf, uint8_t *activation_code,
+                          PUF_Type *puf, puf_config_t pufConfig, uint8_t *activation_code,
                           size_t activation_code_size,
                           const struct flash_area *flash_area,
-                          const struct device *flash_dev);
+                          const struct device *flash_dev, const char *commitment_hex, size_t commitment_size);
 
 
 #endif /* PUF_PROVER_H */
