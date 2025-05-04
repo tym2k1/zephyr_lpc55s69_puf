@@ -11,10 +11,10 @@ static unsigned char memory_buf[MEMORY_BUF_SIZE];
 #define ENROLLMENT_IS_UP 1
 
 #define COMMITMENT_BUFFER_SIZE 65
-const char *input_hex = "0485F5F442C45F70C22FC5E94C25732B5F7FB7971C1A69322752D3B637986A61DB610B4595A59586B09212DC369FC094172BBD3B509048EDC3FC7951452EDAF831";  // Paste your commitment string here
+const char *input_hex = "04F247AA4777B5368F6BAEFC4ACC10994D0C45EEA9E161A84912A77186560B86B0A420DDD38D68AB61BD968CD287C4CBD7E088C2703919E065B6A19861451D9A05";  // Paste your commitment string here
 
 #define CHALLENGE_SIZE 16
-int challengeSize = 16;
+
 
 const uint8_t c1[CHALLENGE_SIZE] = {
     0x3C, 0xA1, 0xF4, 0x92,
@@ -51,7 +51,7 @@ int main(void)
     }
     
     // Initialization of PUF
-    ret = initializeAndStartPuf(PUF,pufConfig,
+    ret = initialize_and_start_puf(PUF,pufConfig,
                                     activation_code,
                                     PUF_ACTIVATION_CODE_SIZE,
                                     flash_area,
@@ -66,7 +66,7 @@ int main(void)
     mbedtls_ecp_group grp;
 	mbedtls_ecp_point h, C;
 	
-    ret = initECC(&grp,&h,&C);
+    ret = init_ECC(&grp,&h,&C);
     if(ret!=0)
     {
         printf("ECC couldn't be initiliased\r\n");
@@ -75,7 +75,7 @@ int main(void)
 
     if(ENROLLMENT_IS_UP==1){
 
-        ret = performEnrollment(&grp,&h,&C,c1,challengeSize, c2, challengeSize, 
+        ret = perform_enrollment(&grp,&h,&C,c1,CHALLENGE_SIZE, c2, CHALLENGE_SIZE, 
                             PUF,
                             activation_code,
                             PUF_ACTIVATION_CODE_SIZE,
@@ -94,7 +94,7 @@ int main(void)
             uint8_t commitment_buffer[COMMITMENT_BUFFER_SIZE];
 
             size_t olen;
-            olen = exportCommitment(&grp,&C, commitment_buffer, sizeof(commitment_buffer));
+            olen = export_commitment(&grp,&C, commitment_buffer, sizeof(commitment_buffer));
             if (olen < 0) {
                 printf("Error exporting commitment, error code: %d\n", olen);
                 return 1;
@@ -127,7 +127,7 @@ int main(void)
         printf("\n");
 
         // Deserialize commitment into C
-        ret = importCommitment(&grp,commitment, &C);
+        ret = import_commitment(&grp,commitment, &C);
         if (ret != 0) {
             printf("Failed to import commitment\n");
             return ret;
@@ -140,7 +140,7 @@ int main(void)
         mbedtls_mpi_init(&result_w);
         mbedtls_mpi_init(&nonce);
 
-        ret = performAuthentication(&grp, &grp.G, &h, &proof, &C, &result_v, &result_w, &nonce , c1, challengeSize, c2, challengeSize, 
+        ret = perform_authentication(&grp, &grp.G, &h, &proof, &C, &result_v, &result_w, &nonce , c1, CHALLENGE_SIZE, c2, CHALLENGE_SIZE, 
                             PUF,
                             activation_code,
                             PUF_ACTIVATION_CODE_SIZE,
@@ -162,7 +162,7 @@ int main(void)
 
     }
 
-    pufDeinit(PUF,pufConfig); // Deinitalization Of Puf
+    puf_deinit(PUF,pufConfig); // Deinitalization Of Puf
     
     return 0;
 }

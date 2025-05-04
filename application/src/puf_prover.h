@@ -4,40 +4,11 @@
 #include "fsl_puf.h"
 #include "flash_handler.h"
 #include "mbedtls/ecp.h"
-// #include "utils.h"
-// #include "constants.h"
-// #include "mbedtls/ecp.h"
 
 #define NUM_RANDOM_NUMBERS 2
 #define RANDOM_NUMBER_SIZE_BYTES 32
 #define PUF_SLOT 0
 #define CONSTANT_FOR_H_GENERATOR 123456789
-
-/**
- * @brief Initialize the PUF prover.
- *
- * This function initializes the PUF Prover logic and then
- * either enrolls and saves the activation code to flash (if writeToFlash is true)
- * or reads the activation code from flash.
- *
- * @param puf                  Pointer to the PUF instance.
- * @param activation_code      Buffer where the activation code will be stored.
- * @param activation_code_size Size of the activation code in bytes.
- * @param flash_dev            Pointer to the flash device to be used.
- * @param flash_area           Pointer to the flash area structure to be used.
- * @param writeToFlash         True to enroll and write the activation code,
- *                             false to read it from flash.
- *
- * @return 0 on success, negative error code on failure.
- */
-int PUF_Prover_Initialize(PUF_Type *puf,
-                          uint8_t *activation_code,
-                          size_t activation_code_size,
-                          const struct flash_area *flash_area,
-                          const struct device *flash_dev,
-                          bool writeToFlash);
-
-
 
 /**
  * @brief Initializes and optionally enrolls and starts the PUF module.
@@ -51,7 +22,7 @@ int PUF_Prover_Initialize(PUF_Type *puf,
  * @param writeToFlash      Set to true for enrollment; false to reuse stored code.
  * @return 0 on success, non zero on failure.
  */
-int initializeAndStartPuf(PUF_Type *puf, puf_config_t pufConfig,
+int initialize_and_start_puf(PUF_Type *puf, puf_config_t pufConfig,
                           uint8_t *activation_code, size_t activation_code_size,
                           const struct flash_area *flash_area,
                           const struct device *flash_dev, bool writeToFlash);
@@ -68,7 +39,7 @@ int initializeAndStartPuf(PUF_Type *puf, puf_config_t pufConfig,
 * @param outputBuffer      Output buffer for the intrinsic key (optional).
 * @return 0 on success, non zero on failure.
 */
-int getPufKey(PUF_Type *puf, uint8_t *activation_code, size_t activation_code_size,
+int get_puf_key(PUF_Type *puf, uint8_t *activation_code, size_t activation_code_size,
               const struct flash_area *flash_area, const struct device *flash_dev,
               bool writeToFlash, uint8_t *outputBuffer);
 
@@ -78,7 +49,7 @@ int getPufKey(PUF_Type *puf, uint8_t *activation_code, size_t activation_code_si
 * @param puf           Pointer to PUF instance.
 * @param pufConfig     PUF configuration structure.
 */
-void pufDeinit(PUF_Type *puf, puf_config_t pufConfig);
+void puf_deinit(PUF_Type *puf, puf_config_t pufConfig);
 
 /**
 * @brief Computes the response from PUF for a given challenge.
@@ -94,7 +65,7 @@ void pufDeinit(PUF_Type *puf, puf_config_t pufConfig);
 * @param writeToFlash  Whether to regenerate and store key code.
 * @return 0 on success, non zero on failure.
 */
-int getResponseToChallenge(const uint8_t *c, size_t c_size, mbedtls_mpi *r,
+int get_response_to_challenge(const uint8_t *c, size_t c_size, mbedtls_mpi *r,
                             PUF_Type *puf, uint8_t *activation_code,
                             size_t activation_code_size,
                             const struct flash_area *flash_area,
@@ -108,7 +79,7 @@ int getResponseToChallenge(const uint8_t *c, size_t c_size, mbedtls_mpi *r,
 * @param C             ECC point C to initialize.
 * @return 0 on success, non zero on failure.
 */
-int initECC(mbedtls_ecp_group *grp, mbedtls_ecp_point *h, mbedtls_ecp_point *C);
+int init_ECC(mbedtls_ecp_group *grp, mbedtls_ecp_point *h, mbedtls_ecp_point *C);
 
 /**
 * @brief Performs ECC enrollment operation with two challenges and stores resulting point C.
@@ -126,7 +97,7 @@ int initECC(mbedtls_ecp_group *grp, mbedtls_ecp_point *h, mbedtls_ecp_point *C);
 * @param writeToFlash  Whether to store new key code.
 * @return 0 on success, non zero on failure.
 */
-int performEnrollment(mbedtls_ecp_group *grp, mbedtls_ecp_point *h, mbedtls_ecp_point *C,
+int perform_enrollment(mbedtls_ecp_group *grp, mbedtls_ecp_point *h, mbedtls_ecp_point *C,
                       const uint8_t *c1, size_t c1_size,
                       const uint8_t *c2, size_t c2_size,
                       PUF_Type *puf, uint8_t *activation_code,
@@ -170,7 +141,7 @@ int add_mul_mod(mbedtls_mpi *mpiValue_1, mbedtls_mpi *mpiValue_2,
 * @param flash_dev     Flash device used.
 * @return 0 on success, non zero on failure.
 */
-int performAuthentication(mbedtls_ecp_group *grp, mbedtls_ecp_point *g, mbedtls_ecp_point *h,
+int perform_authentication(mbedtls_ecp_group *grp, mbedtls_ecp_point *g, mbedtls_ecp_point *h,
                           mbedtls_ecp_point *proof, mbedtls_ecp_point *C,
                           mbedtls_mpi *result_v, mbedtls_mpi *result_w,
                           mbedtls_mpi *nonce,

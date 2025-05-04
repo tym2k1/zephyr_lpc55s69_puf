@@ -23,7 +23,7 @@ static int rng_initialized = 0;
  * @param data_len   Length of input data.
  * @param output     Output buffer (32 bytes) for SHA-256 hash.
  */
-void sha256Hash(const unsigned char *data, size_t data_len, unsigned char *output);
+void sha256_hash(const unsigned char *data, size_t data_len, unsigned char *output);
 
 /**
  * @brief Simple fallback random number generator using rand().
@@ -33,7 +33,7 @@ void sha256Hash(const unsigned char *data, size_t data_len, unsigned char *outpu
  * @param len        Number of random bytes to generate.
  * @return 0 on success.
  */
-int randFunction(void *rng_state, unsigned char *output, size_t len);
+int rand_function(void *rng_state, unsigned char *output, size_t len);
 
 /**
  * @brief Serializes an EC point to a buffer.
@@ -44,7 +44,7 @@ int randFunction(void *rng_state, unsigned char *output, size_t len);
  * @param buf_size   Size of the buffer.
  * @return Number of bytes written on success, -1 on failure.
  */
-size_t exportCommitment(mbedtls_ecp_group *grp, const mbedtls_ecp_point *C, uint8_t *buf, size_t buf_size);
+size_t export_commitment(mbedtls_ecp_group *grp, const mbedtls_ecp_point *C, uint8_t *buf, size_t buf_size);
 
 /**
  * @brief Deserializes an EC point from a buffer.
@@ -54,7 +54,7 @@ size_t exportCommitment(mbedtls_ecp_group *grp, const mbedtls_ecp_point *C, uint
  * @param P          Destination EC point.
  * @return length on success, -1 on failure.
  */
-int importCommitment(mbedtls_ecp_group *grp, const uint8_t *buf, mbedtls_ecp_point *P);
+int import_commitment(mbedtls_ecp_group *grp, const uint8_t *buf, mbedtls_ecp_point *P);
 
 /**
  * @brief Generates two random 256-bit (32-byte) numbers using CTR_DRBG.
@@ -63,7 +63,7 @@ int importCommitment(mbedtls_ecp_group *grp, const uint8_t *buf, mbedtls_ecp_poi
  * @param num2       Output MPI for the second random number.
  * @return 0 on success, 1 on error.
  */
-int generateRandomNumbers(mbedtls_mpi *num, mbedtls_mpi *num2);
+int generate_random_numbers(mbedtls_mpi *num, mbedtls_mpi *num2);
 
 /**
  * @brief Prints a big number (MPI) in hexadecimal.

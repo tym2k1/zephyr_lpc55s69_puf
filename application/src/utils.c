@@ -4,12 +4,12 @@
 #include "mbedtls/ecp.h"
 #include "utils.h"
 
-void sha256Hash(const unsigned char *data, size_t data_len,
+void sha256_hash(const unsigned char *data, size_t data_len,
     unsigned char *output) {
     mbedtls_sha256(data, data_len, output, 0);
 }
 
-int randFunction(void *rng_state, unsigned char *output, size_t len) {
+int rand_function(void *rng_state, unsigned char *output, size_t len) {
 
     size_t use_len;
 	int rnd;
@@ -33,7 +33,7 @@ int randFunction(void *rng_state, unsigned char *output, size_t len) {
 }
 
 
-size_t exportCommitment(mbedtls_ecp_group *grp,const mbedtls_ecp_point *C, uint8_t *buf, size_t buf_size) {
+size_t export_commitment(mbedtls_ecp_group *grp,const mbedtls_ecp_point *C, uint8_t *buf, size_t buf_size) {
 
     size_t olen;
 	int ret = mbedtls_ecp_point_write_binary(grp, C, MBEDTLS_ECP_PF_UNCOMPRESSED, &olen, buf, buf_size);
@@ -41,12 +41,12 @@ size_t exportCommitment(mbedtls_ecp_group *grp,const mbedtls_ecp_point *C, uint8
     return (ret == 0) ? olen : -1;
 }
 
-int importCommitment(mbedtls_ecp_group *grp,const uint8_t *buf, mbedtls_ecp_point *P) {
+int import_commitment(mbedtls_ecp_group *grp,const uint8_t *buf, mbedtls_ecp_point *P) {
     int ret = mbedtls_ecp_point_read_binary(grp, P, buf, 65); // 65 bytes for uncompressed point
     return ret;
 }
 
-int generateRandomNumbers(mbedtls_mpi *num, mbedtls_mpi *num2) {
+int generate_random_numbers(mbedtls_mpi *num, mbedtls_mpi *num2) {
     if (!rng_initialized) {
         if (init_random_generator() != 0) {
             return 1;
